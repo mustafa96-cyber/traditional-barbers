@@ -7,40 +7,54 @@ const heroEl=document.getElementById('top'), stageA=document.getElementById('sta
 const ss=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x);};
 function narrow(){return matchMedia('(max-width:940px)').matches;}
 function progress(){if(!heroEl)return 0;const r=heroEl.getBoundingClientRect();const total=r.height-innerHeight;if(total<=0)return 0;return Math.min(1,Math.max(0,-r.top/total));}
-let renderer,scene,camera,pole,stripeTex,raf;
+let renderer,scene,camera,chair,raf;
 try{
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;
   scene=new THREE.Scene();
   const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
-  camera=new THREE.PerspectiveCamera(38,1,0.1,100);camera.position.set(0,0,9.5);
-  stripeTex=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
-    g.fillStyle='#f4efe6';g.fillRect(0,0,256,256);g.save();g.translate(128,128);g.rotate(Math.PI/4);
-    const band=32;for(let x=-320;x<320;x+=band*3){g.fillStyle='#9e2b25';g.fillRect(x,-320,band,640);g.fillStyle='#243448';g.fillRect(x+band*1.5,-320,band,640);}g.restore();
-    const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,3);t.anisotropy=4;return t;})();
-  pole=new THREE.Group();
-  const brass=new THREE.MeshStandardMaterial({color:0xb8902f,metalness:1,roughness:0.28});
-  const core=new THREE.Mesh(new THREE.CylinderGeometry(0.92,0.92,4.2,64,1,true),new THREE.MeshStandardMaterial({map:stripeTex,roughness:0.42,metalness:0.05}));
-  pole.add(core);
-  const glass=new THREE.Mesh(new THREE.CylinderGeometry(1.0,1.0,4.2,64,1,true),new THREE.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:0.06,transmission:1,thickness:0.6,ior:1.45,transparent:true,opacity:.5,clearcoat:1,side:THREE.DoubleSide}));
-  pole.add(glass);
-  const capGeo=new THREE.CylinderGeometry(1.12,1.12,0.5,64);
-  const capTop=new THREE.Mesh(capGeo,brass);capTop.position.y=2.35;pole.add(capTop);
-  const capBot=new THREE.Mesh(capGeo,brass);capBot.position.y=-2.35;pole.add(capBot);
-  const finGeo=new THREE.SphereGeometry(0.62,40,32);
-  const finTop=new THREE.Mesh(finGeo,brass);finTop.position.y=2.85;pole.add(finTop);
-  const finBot=new THREE.Mesh(finGeo,brass);finBot.position.y=-2.85;pole.add(finBot);
-  const collarGeo=new THREE.TorusGeometry(1.02,0.08,16,64);
-  [1.95,-1.95].forEach(y=>{const t=new THREE.Mesh(collarGeo,brass);t.rotation.x=Math.PI/2;t.position.y=y;pole.add(t);});
-  pole.rotation.z=0.1;scene.add(pole);
-  const shadowTex=(()=>{const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');const rg=g.createRadialGradient(64,64,4,64,64,64);rg.addColorStop(0,'rgba(40,28,20,.5)');rg.addColorStop(1,'rgba(40,28,20,0)');g.fillStyle=rg;g.fillRect(0,0,128,128);return new THREE.CanvasTexture(c);})();
-  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(4,2),new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,opacity:.5,depthWrite:false}));
-  shadow.rotation.x=-Math.PI/2;shadow.position.y=-3.4;scene.add(shadow);
-  const key=new THREE.SpotLight(0xffffff,160,50,0.6,0.5);key.position.set(6,9,9);scene.add(key);
-  const rim=new THREE.SpotLight(0xc94b2e,90,50,0.7,0.6);rim.position.set(-8,-2,5);scene.add(rim);
-  scene.add(new THREE.AmbientLight(0x4a4038,1.1));
-  window.__setSceneTheme=(night)=>{renderer.toneMappingExposure=night?1.25:1.05;if(rim)rim.intensity=night?100:80;};
+  camera=new THREE.PerspectiveCamera(38,1,0.1,100);camera.position.set(0,0.4,11);
+  const leather=new THREE.MeshPhysicalMaterial({color:0x8a2f27,roughness:0.48,metalness:0.05,clearcoat:0.55,clearcoatRoughness:0.4});
+  const chrome=new THREE.MeshStandardMaterial({color:0xd8dde3,metalness:1,roughness:0.15});
+  const dark=new THREE.MeshStandardMaterial({color:0x2a2f36,metalness:.6,roughness:.5});
+  chair=new THREE.Group();
+  // base + column
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.75,0.3,48),chrome);base.position.y=-2.75;chair.add(base);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.1,0.09,16,48),chrome);ring.rotation.x=Math.PI/2;ring.position.y=-2.4;chair.add(ring);
+  const col=new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.55,1.7,32),chrome);col.position.y=-1.78;chair.add(col);
+  const hyd=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,0.7,24),dark);hyd.position.y=-0.78;chair.add(hyd);
+  // seat
+  const seat=new THREE.Mesh(new THREE.BoxGeometry(2.35,0.5,2.15),leather);seat.position.y=-0.4;chair.add(seat);
+  const cush=new THREE.Mesh(new THREE.BoxGeometry(2.06,0.24,1.86),leather);cush.position.y=-0.08;chair.add(cush);
+  const seam=new THREE.Mesh(new THREE.BoxGeometry(2.06,0.02,0.04),dark);seam.position.set(0,0.06,0);chair.add(seam);
+  // backrest (tilted)
+  const backG=new THREE.Group();
+  const back=new THREE.Mesh(new THREE.BoxGeometry(2.2,2.5,0.44),leather);back.position.y=1.25;backG.add(back);
+  const backc=new THREE.Mesh(new THREE.BoxGeometry(1.9,2.2,0.2),leather);backc.position.set(0,1.25,0.28);backG.add(backc);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(1.05,0.62,0.42),leather);head.position.y=2.72;backG.add(head);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.35,16),chrome);neck.position.y=2.4;backG.add(neck);
+  backG.position.set(0,-0.15,-0.98);backG.rotation.x=-0.14;chair.add(backG);
+  // armrests
+  [-1.4,1.4].forEach(x=>{
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.18,2.1),chrome);arm.position.set(x,0.24,0.05);chair.add(arm);
+    const pad=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.16,1.5),leather);pad.position.set(x,0.38,0.12);chair.add(pad);
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.6,16),chrome);post.position.set(x,-0.1,0.7);chair.add(post);
+    const post2=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.6,16),chrome);post2.position.set(x,-0.1,-0.55);chair.add(post2);
+  });
+  // footrest
+  const foot=new THREE.Mesh(new THREE.BoxGeometry(1.75,0.14,0.55),chrome);foot.position.set(0,-1.55,1.55);chair.add(foot);
+  const grooves=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.16,0.06),dark);grooves.position.set(0,-1.47,1.75);chair.add(grooves);
+  const fbar=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,1.7,16),chrome);fbar.rotation.z=Math.PI/2;fbar.position.set(0,-1.38,1.55);chair.add(fbar);
+  chair.rotation.y=0.5;scene.add(chair);
+  // contact shadow
+  const shadowTex=(()=>{const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');const rg=g.createRadialGradient(64,64,4,64,64,64);rg.addColorStop(0,'rgba(40,28,20,.55)');rg.addColorStop(1,'rgba(40,28,20,0)');g.fillStyle=rg;g.fillRect(0,0,128,128);return new THREE.CanvasTexture(c);})();
+  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(6,4),new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,opacity:.5,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2;shadow.position.y=-3.0;scene.add(shadow);
+  const key=new THREE.SpotLight(0xffffff,170,60,0.6,0.5);key.position.set(7,10,9);scene.add(key);
+  const rim=new THREE.SpotLight(0xc94b2e,90,60,0.7,0.6);rim.position.set(-9,-2,5);scene.add(rim);
+  scene.add(new THREE.AmbientLight(0x4a4038,1.05));
+  window.__setSceneTheme=(night)=>{renderer.toneMappingExposure=night?1.22:1.04;if(rim)rim.intensity=night?100:82;};
   window.__setSceneTheme(document.documentElement.getAttribute('data-theme')==='night');
   function resize(){const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}
   resize();addEventListener('resize',resize);
@@ -50,17 +64,15 @@ try{
   addEventListener('pointerup',()=>{dragging=false;});
   canvas.addEventListener('pointermove',e=>{if(!dragging)return;const dx=e.clientX-lastX;lastX=e.clientX;dragVel=dx*0.006;dragAz+=dragVel;if(Math.abs(dx)>2&&!didDrag){didDrag=true;if(grab)grab.style.opacity='0';}});
   function loop(){raf=requestAnimationFrame(loop);t+=0.016;const nw=narrow();const p=progress();
-    if(!reduce)stripeTex.offset.y-=0.006;
     if(!dragging){dragVel*=0.92;dragAz+=dragVel;}
-    tx+=(mx*0.4-tx)*0.05;ty+=(my*0.25-ty)*0.05;
-    pole.rotation.y=t*0.25+dragAz+tx*1.2;
-    pole.rotation.z=0.1-ty*0.3 + p*0.12;
-    const baseX=nw?0:2.6;pole.position.x=baseX;
-    pole.position.y=Math.sin(t*0.6)*0.08 + p*1.2;   // gently rises on scroll
-    pole.scale.setScalar((nw?0.78:1.05)*(1-0.05*p));
-    shadow.position.x=pole.position.x;shadow.material.opacity=(nw?.4:.5)*(1-0.5*p);
-    camera.position.z=9.5-0.6*ss(0,1,p);
-    // stage cross-fade (desktop scroll story)
+    tx+=(mx*0.4-tx)*0.05;ty+=(my*0.2-ty)*0.05;
+    chair.rotation.y=(reduce?0.5:0.5+t*0.18)+dragAz+tx*0.8;
+    chair.rotation.x=-ty*0.15;
+    const baseX=nw?0:2.5;chair.position.x=baseX;
+    chair.position.y=(nw?-0.2:0.1)+Math.sin(t*0.6)*0.06;
+    chair.scale.setScalar((nw?0.62:0.82)*(1-0.04*p));
+    shadow.position.x=chair.position.x;shadow.material.opacity=(nw?.35:.5)*(1-0.4*p);
+    camera.position.z=11-0.8*ss(0,1,p);camera.position.y=0.4+0.2*p;
     const aOp=1-ss(0.05,0.28,p);
     if(stageA){stageA.style.opacity=aOp;stageA.style.transform='translateY('+(-24*ss(0.05,0.3,p))+'px)';stageA.style.pointerEvents=aOp<0.15?'none':'auto';}
     if(badge)badge.style.opacity=aOp;
